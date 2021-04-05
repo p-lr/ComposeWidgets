@@ -47,6 +47,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         StartStopButton(
                             modifier = Modifier.size(200.dp),
+                            disableTimeoutMs = START_STOP_DISABLE_TIMEOUT,
                             stopped = viewModel.isStopped,
                             onClick = { viewModel.onStartStopClicked() }
                         )
@@ -147,8 +148,6 @@ fun TimeoutShape(
     val angle = if (t != 0f && t != 1f) {
         t * 360f
     } else 0f
-
-    println(angle)
 
     Canvas(
         modifier = modifier
