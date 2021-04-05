@@ -13,5 +13,5 @@ This button carries two information:
 * The state transition, during which the button cannot change of state.
 
 <p align="center">
-<img src="https://user-images.githubusercontent.com/15638794/113583791-60195d80-962a-11eb-8b40-c23f06a6a8c6.gif">
+<img src="https://user-images.githubusercontent.com/15638794/113584091-c605e500-962a-11eb-9e28-7a7229479c7a.gif">
 </p>
