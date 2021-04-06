@@ -1,4 +1,10 @@
-# StartStopButton
+# Compose Widgets
+
+## StartStopButton
+
+<p align="center">
+<img src="https://user-images.githubusercontent.com/15638794/113584091-c605e500-962a-11eb-9e28-7a7229479c7a.gif">
+</p>
 
 A Jetpack compose implementation of a button which has two states (started, and stopped).
 It animates when transitioning between states. If a click happens in the middle of a transition, the
@@ -11,7 +17,3 @@ This button carries two information:
 
 * The state started/stopped,
 * The state transition, during which the button cannot change of state.
-
-<p align="center">
-<img src="https://user-images.githubusercontent.com/15638794/113584091-c605e500-962a-11eb-9e28-7a7229479c7a.gif">
-</p>
