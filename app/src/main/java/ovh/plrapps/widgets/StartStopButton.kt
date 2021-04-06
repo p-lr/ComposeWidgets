@@ -79,6 +79,12 @@ fun StartStopButton(
     var playTime by remember { mutableStateOf(0L) }
     var timeOutProgress by remember { mutableStateOf(0f) }
 
+    /**
+     * Everytime the button is composed, the timeout animation should stop and restart. This is
+     * exactly the purpose of [LaunchedEffect].
+     * There's an exception though. When the button is composed for the first time, we don't want to
+     * see the timeout animation.
+     */
     var firstTimeComposition by remember { mutableStateOf(true) }
     LaunchedEffect(stopped) {
         if (firstTimeComposition) {
