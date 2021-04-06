@@ -31,7 +31,6 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ovh.plrapps.widgets.ui.theme.ComposeWidgetsTheme
-import ovh.plrapps.widgets.utils.ease
 import ovh.plrapps.widgets.utils.lerp
 
 /**
@@ -158,7 +157,7 @@ fun StartStopShape(
     val playPath = remember { addPathNodes("M 19 33 L 19 15 L 33 24 L 33 24 Z") }
     val stopPath = remember { addPathNodes("M 17 31 L 17 17 L 31 17 L 31 31 Z") }
 
-    val pathNodes = lerp(playPath, stopPath, ease(t, 3f))
+    val pathNodes = lerp(playPath, stopPath, t)
 
     val degree = t * 90
 

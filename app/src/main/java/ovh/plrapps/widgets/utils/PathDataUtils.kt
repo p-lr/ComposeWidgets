@@ -29,6 +29,22 @@ fun lerp(fromPathNodes: List<PathNode>, toPathNodes: List<PathNode>, t: Float): 
                 lerp(from.x3, to.x3, t),
                 lerp(from.y3, to.y3, t),
             )
+        } else if (from is PathNode.RelativeCurveTo && to is PathNode.RelativeCurveTo) {
+            PathNode.RelativeCurveTo(
+                lerp(from.dx1, to.dx1, t),
+                lerp(from.dy1, to.dy1, t),
+                lerp(from.dx2, to.dx2, t),
+                lerp(from.dy2, to.dy2, t),
+                lerp(from.dx3, to.dx3, t),
+                lerp(from.dy3, to.dy3, t),
+            )
+        } else if (from is PathNode.RelativeReflectiveCurveTo && to is PathNode.RelativeReflectiveCurveTo){
+            PathNode.RelativeReflectiveCurveTo(
+                lerp(from.dx1, to.dx1, t),
+                lerp(from.dy1, to.dy1, t),
+                lerp(from.dx2, to.dx2, t),
+                lerp(from.dy2, to.dy2, t)
+            )
         } else if (from is PathNode.LineTo && to is PathNode.LineTo) {
             PathNode.LineTo(
                 lerp(from.x, to.x, t),
@@ -37,6 +53,7 @@ fun lerp(fromPathNodes: List<PathNode>, toPathNodes: List<PathNode>, t: Float): 
         } else if (from is PathNode.Close && to is PathNode.Close) {
             PathNode.Close
         } else {
+            println(from)
             // TODO: support all possible SVG path data types
             throw IllegalStateException("Unsupported SVG PathNode command")
         }
