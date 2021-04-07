@@ -1,4 +1,4 @@
-package ovh.plrapps.widgets
+package ovh.plrapps.widgets.ui.widgets
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
@@ -17,12 +17,23 @@ import androidx.compose.ui.unit.dp
 import ovh.plrapps.widgets.utils.lerp
 
 @Composable
+fun LandMark(
+    modifier: Modifier = Modifier,
+    isStatic: Boolean
+) = Marker(
+    modifier,
+    backgroundColor = Color(0xFF9C27B0),
+    strokeColor = Color(0xFF4A148C),
+    isStatic = isStatic
+)
+
+@Composable
 fun Marker(
     modifier: Modifier = Modifier,
     backgroundColor: Color = Color(0xFFF16157),
     strokeColor: Color = Color(0xFFB6392F),
     animationDurationMs: Int = 500,
-    isStatic: Boolean
+    isStatic: Boolean = true
 ) {
     val animatedProgress = animateFloatAsState(
         if (isStatic) 0f else 1f,
