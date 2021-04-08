@@ -7,5 +7,5 @@ dependencyResolutionManagement {
         maven { url = uri("https://dl.bintray.com/kotlin/kotlin-eap") }
     }
 }
-rootProject.name = "StartStopButton"
+rootProject.name = "ComposeWidgets"
 include ':app'
