@@ -14,5 +14,6 @@ sealed class Screens : Parcelable {
 enum class MainDestinations {
     HOME,
     START_STOP_BTN,
-    MARKER
+    MARKER,
+    ZOOM_PAN_ROTATE
 }

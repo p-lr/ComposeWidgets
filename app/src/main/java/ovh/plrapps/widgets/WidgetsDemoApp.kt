@@ -10,6 +10,7 @@ import ovh.plrapps.widgets.ui.MainDestinations
 import ovh.plrapps.widgets.ui.screens.Home
 import ovh.plrapps.widgets.ui.screens.MarkerDemo
 import ovh.plrapps.widgets.ui.screens.StartStopDemo
+import ovh.plrapps.widgets.ui.screens.ZoomPanRotateDemo
 import ovh.plrapps.widgets.ui.theme.ComposeWidgetsTheme
 
 @Composable
@@ -25,6 +26,7 @@ fun WidgetsDemoApp() {
             }
             composable(MainDestinations.START_STOP_BTN.name) { StartStopDemo() }
             composable(MainDestinations.MARKER.name) { MarkerDemo() }
+            composable(MainDestinations.ZOOM_PAN_ROTATE.name) { ZoomPanRotateDemo() }
         }
     }
 }
