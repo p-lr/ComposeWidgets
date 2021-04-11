@@ -1,7 +1,6 @@
 package ovh.plrapps.widgets.ui.widgets
 
 import androidx.compose.foundation.gestures.*
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -12,6 +11,7 @@ import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import ovh.plrapps.widgets.utils.AngleDegree
 
 @Composable
 internal fun ZoomPanRotate(
@@ -64,23 +64,31 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
     private val transformableState = TransformableState { zoomChange, panChange, rotationChange ->
         scale *= zoomChange
         rotation += rotationChange
-        scroll += panChange
+        scrollX += panChange.x
+        scrollY += panChange.y
     }
 
     var scale by mutableStateOf(1f)
-    var rotation by mutableStateOf(0f)
-    var scroll by mutableStateOf(Offset.Zero)
+    var rotation: AngleDegree by mutableStateOf(0f)
+    var scrollX by mutableStateOf(0f)
+    var scrollY by mutableStateOf(0f)
 
-    override fun onScaleRatio(scaleRatio: Float) {
+    override fun onScaleRatio(scaleRatio: AngleDegree) {
         this.scale *= scaleRatio
     }
 
     override fun onRotationDelta(rotationDelta: Float) {
         this.rotation += rotationDelta
+//        println("rotation : $rotation")
     }
 
     override fun onScrollDelta(scrollDelta: Offset) {
-        this.scroll += scrollDelta
+//        val rotRad = -rotation.toRad()
+//        println("scroll delta : $scrollDelta")
+//        scrollX += scrollDelta.x * cos(rotRad) - scrollDelta.y * sin(rotRad)
+//        scrollY += scrollDelta.x * sin(rotRad) + scrollDelta.y * cos(rotRad)
+        scrollX += scrollDelta.x
+        scrollY += scrollDelta.y
     }
 
     fun smoothScaleTo(scale: Float) = scope.launch {
