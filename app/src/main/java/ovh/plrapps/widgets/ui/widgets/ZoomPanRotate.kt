@@ -1,10 +1,7 @@
 package ovh.plrapps.widgets.ui.widgets
 
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.gestures.*
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -17,7 +14,6 @@ import kotlinx.coroutines.launch
 import ovh.plrapps.widgets.utils.AngleDegree
 import ovh.plrapps.widgets.utils.toRad
 import kotlin.math.cos
-import kotlin.math.roundToInt
 import kotlin.math.sin
 
 @Composable
@@ -84,10 +80,10 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
     var scrollY by mutableStateOf(0f)
 
     override fun onScaleRatio(scaleRatio: Float, centroid: Offset) {
-        val destScale = this.scale * scaleRatio
-        constrainScale(destScale)
+        val formerScale = scale
+        constrainScale(scale * scaleRatio)
 
-        val effectiveScaleRatio = destScale / this.scale
+        val effectiveScaleRatio = scale / formerScale
         scrollX = (scrollX + centroid.x) * effectiveScaleRatio - centroid.x
         scrollY = (scrollY + centroid.y) * effectiveScaleRatio - centroid.y
 
@@ -109,7 +105,6 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
         scrollX -= scrollDelta.x * cos(rotRad) - scrollDelta.y * sin(rotRad)
         scrollY -= scrollDelta.x * sin(rotRad) + scrollDelta.y * cos(rotRad)
         constrainScroll(scrollX, scrollY)
-        println("scrollY ${this.scrollY}")
     }
 
     fun smoothScaleTo(scale: Float) = scope.launch {
@@ -127,10 +122,8 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
     }
 
     private fun constrainScroll(scrollX: Float, scrollY: Float) {
-        scope.launch {
-            this@MapViewState.scrollX = scrollX.coerceIn(0f, fullWidth * scale)
-            this@MapViewState.scrollY = scrollY.coerceIn(0f, fullHeight * scale)
-        }
+        this@MapViewState.scrollX = scrollX.coerceIn(0f, fullWidth * scale)
+        this@MapViewState.scrollY = scrollY.coerceIn(0f, fullHeight * scale)
     }
 
     private fun constrainScale(scale: Float) {

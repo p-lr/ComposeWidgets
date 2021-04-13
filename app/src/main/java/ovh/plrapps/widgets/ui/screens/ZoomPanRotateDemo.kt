@@ -55,7 +55,7 @@ fun ZoomPanRotateDemo(modifier: Modifier = Modifier) {
             withTransform({
                 rotate(state.rotation)
                 translate(left = -state.scrollX, top = -state.scrollY)
-                scale(scale = state.scale)
+                scale(scale = state.scale, Offset.Zero)
 
             }) {
                 drawRect(Color.Blue, topLeft = Offset.Zero, size = Size(256f, 256f))
