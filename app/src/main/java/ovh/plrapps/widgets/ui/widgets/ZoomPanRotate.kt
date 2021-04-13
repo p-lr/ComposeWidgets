@@ -7,6 +7,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -14,6 +16,7 @@ import kotlinx.coroutines.launch
 import ovh.plrapps.widgets.utils.AngleDegree
 import ovh.plrapps.widgets.utils.toRad
 import kotlin.math.cos
+import kotlin.math.max
 import kotlin.math.sin
 
 @Composable
@@ -22,6 +25,7 @@ internal fun ZoomPanRotate(
     scaleRatioListener: ScaleRatioListener,
     rotationDeltaListener: RotationDeltaListener,
     panDeltaListener: PanDeltaListener,
+    layoutSizeChangeListener: LayoutSizeChangeListener,
     content: @Composable () -> Unit
 ) {
     Layout(
@@ -42,6 +46,9 @@ internal fun ZoomPanRotate(
             .pointerInput(Unit) {
                 detectTapGestures(onDoubleTap = { println("double tap") })
             }
+            .onSizeChanged {
+                layoutSizeChangeListener.onSizeChanged(it)
+            }
             .fillMaxSize(),
     ) { measurables, constraints ->
         val placeables = measurables.map { measurable ->
@@ -60,11 +67,12 @@ internal fun ZoomPanRotate(
     }
 }
 
-class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener {
+class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener,
+    LayoutSizeChangeListener {
     private val scope = CoroutineScope(Dispatchers.Main)
 
-    private val fullWidth = 1500
-    private val fullHeight = 1000
+    private val fullWidth = 2560
+    private val fullHeight = 1280
 
     /* A handy tool to animate scale, rotation, and scroll */
     private val transformableState = TransformableState { zoomChange, panChange, rotationChange ->
@@ -78,6 +86,8 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
     var rotation: AngleDegree by mutableStateOf(0f)
     var scrollX by mutableStateOf(0f)
     var scrollY by mutableStateOf(0f)
+
+    private var layoutSize by mutableStateOf(IntSize(0, 0))
 
     override fun onScaleRatio(scaleRatio: Float, centroid: Offset) {
         val formerScale = scale
@@ -107,6 +117,11 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
         constrainScroll(scrollX, scrollY)
     }
 
+    override fun onSizeChanged(size: IntSize) {
+        println("layout changed: $size")
+        layoutSize = size
+    }
+
     fun smoothScaleTo(scale: Float) = scope.launch {
         val currScale = this@MapViewState.scale
         if (currScale > 0) {
@@ -122,8 +137,10 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
     }
 
     private fun constrainScroll(scrollX: Float, scrollY: Float) {
-        this@MapViewState.scrollX = scrollX.coerceIn(0f, fullWidth * scale)
-        this@MapViewState.scrollY = scrollY.coerceIn(0f, fullHeight * scale)
+        this@MapViewState.scrollX =
+            scrollX.coerceIn(0f, max(0f, fullWidth * scale - layoutSize.width))
+        this@MapViewState.scrollY =
+            scrollY.coerceIn(0f, max(0f, fullHeight * scale - layoutSize.height))
     }
 
     private fun constrainScale(scale: Float) {
@@ -141,6 +158,10 @@ internal interface RotationDeltaListener {
 
 internal interface PanDeltaListener {
     fun onScrollDelta(scrollDelta: Offset)
+}
+
+internal interface LayoutSizeChangeListener {
+    fun onSizeChanged(size: IntSize)
 }
 
 class MapViewViewModel() : ViewModel() {
