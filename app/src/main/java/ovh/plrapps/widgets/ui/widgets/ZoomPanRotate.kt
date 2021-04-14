@@ -17,6 +17,7 @@ import ovh.plrapps.widgets.utils.AngleDegree
 import ovh.plrapps.widgets.utils.toRad
 import kotlin.math.cos
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sin
 
 @Composable
@@ -73,6 +74,7 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
 
     private val fullWidth = 2560
     private val fullHeight = 1280
+    private val minimumScaleMode: MinimumScaleMode = Fit
 
     /* A handy tool to animate scale, rotation, and scroll */
     private val transformableState = TransformableState { zoomChange, panChange, rotationChange ->
@@ -88,6 +90,7 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
     var scrollY by mutableStateOf(0f)
 
     private var layoutSize by mutableStateOf(IntSize(0, 0))
+    private var minScale: Float by mutableStateOf(0f)
 
     override fun onScaleRatio(scaleRatio: Float, centroid: Offset) {
         val formerScale = scale
@@ -120,6 +123,8 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
     override fun onSizeChanged(size: IntSize) {
         println("layout changed: $size")
         layoutSize = size
+        recalculateMinScale()
+        constrainScale(scale)
     }
 
     fun smoothScaleTo(scale: Float) = scope.launch {
@@ -137,14 +142,24 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
     }
 
     private fun constrainScroll(scrollX: Float, scrollY: Float) {
-        this@MapViewState.scrollX =
+        this.scrollX =
             scrollX.coerceIn(0f, max(0f, fullWidth * scale - layoutSize.width))
-        this@MapViewState.scrollY =
+        this.scrollY =
             scrollY.coerceIn(0f, max(0f, fullHeight * scale - layoutSize.height))
     }
 
+    private fun recalculateMinScale() {
+        val minScaleX = layoutSize.width.toFloat() / fullWidth
+        val minScaleY = layoutSize.height.toFloat() / fullHeight
+        minScale = when (minimumScaleMode) {
+            Fit -> min(minScaleX, minScaleY)
+            Fill -> max(minScaleX, minScaleY)
+            is Forced -> minimumScaleMode.scale
+        }
+    }
+
     private fun constrainScale(scale: Float) {
-        this.scale = scale.coerceIn(Float.MIN_VALUE, 2f)  // scale between 0+ and 2f
+        this.scale = scale.coerceIn(minScale, 2f)  // scale between 0+ and 2f
     }
 }
 
@@ -167,5 +182,12 @@ internal interface LayoutSizeChangeListener {
 class MapViewViewModel() : ViewModel() {
     val state: MapViewState by mutableStateOf(MapViewState())
 }
+
+sealed class MinimumScaleMode
+object Fit : MinimumScaleMode()
+object Fill : MinimumScaleMode()
+data class Forced(val scale: Float) : MinimumScaleMode()
+
+
 
 
