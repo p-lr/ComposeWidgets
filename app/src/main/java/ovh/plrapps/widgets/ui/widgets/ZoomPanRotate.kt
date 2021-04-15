@@ -82,7 +82,7 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
 
     private val fullWidth = 25600
     private val fullHeight = 12800
-    private val minimumScaleMode: MinimumScaleMode = Fit
+    private val minimumScaleMode: MinimumScaleMode = Fill
 
     /* A handy tool to animate scale, rotation, and scroll */
     private val transformableState = TransformableState { zoomChange, panChange, rotationChange ->
@@ -100,7 +100,8 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
     private var layoutSize by mutableStateOf(IntSize(0, 0))
     private var minScale: Float by mutableStateOf(0f)
 
-    var scrollAnimatable: Animatable<Offset, AnimationVector2D>? = null
+    /* Used for fling animation */
+    private val scrollAnimatable: Animatable<Offset, AnimationVector2D> = Animatable(Offset.Zero, Offset.VectorConverter)
     var isFlinging = false
 
     override fun onScaleRatio(scaleRatio: Float, centroid: Offset) {
@@ -132,12 +133,12 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
         constrainScroll(scrollX, scrollY)
     }
 
-    override fun onFling(coroutineScope: CoroutineScope, velocity: Velocity) {
-        scrollAnimatable = Animatable(Offset(scrollX, scrollY), Offset.VectorConverter)
+    override fun onFling(composableScope: CoroutineScope, velocity: Velocity) {
         isFlinging = true
 
-        coroutineScope.launch {
-            scrollAnimatable?.animateDecay(
+        composableScope.launch {
+            scrollAnimatable.snapTo(Offset(scrollX, scrollY))
+            scrollAnimatable.animateDecay(
                 initialVelocity = -Offset(velocity.x, velocity.y),
                 animationSpec = FloatExponentialDecaySpec().generateDecayAnimationSpec(),
             ) {
@@ -178,16 +179,8 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
     }
 
     private fun constrainScroll(scrollX: Float, scrollY: Float) {
-        constrainScrollX(scrollX)
-        constrainScrollY(scrollY)
-    }
-
-    private fun constrainScrollX(scrollX: Float) {
         this.scrollX =
             scrollX.coerceIn(0f, max(0f, fullWidth * scale - layoutSize.width))
-    }
-
-    private fun constrainScrollY(scrollY: Float) {
         this.scrollY =
             scrollY.coerceIn(0f, max(0f, fullHeight * scale - layoutSize.height))
     }
@@ -241,29 +234,6 @@ object Fit : MinimumScaleMode()
 object Fill : MinimumScaleMode()
 data class Forced(val scale: Float) : MinimumScaleMode()
 
-private suspend fun Animatable<Float, AnimationVector1D>.fling(
-    initialVelocity: Float,
-    animationSpec: DecayAnimationSpec<Float>,
-    adjustTarget: ((Float) -> Float)?,
-    block: (Animatable<Float, AnimationVector1D>.() -> Unit)? = null,
-): AnimationResult<Float, AnimationVector1D> {
-    val targetValue = animationSpec.calculateTargetValue(value, initialVelocity)
-    val adjustedTarget = adjustTarget?.invoke(targetValue)
-
-    return if (adjustedTarget != null) {
-        animateTo(
-            targetValue = adjustedTarget,
-            initialVelocity = initialVelocity,
-            block = block
-        )
-    } else {
-        animateDecay(
-            initialVelocity = initialVelocity,
-            animationSpec = animationSpec,
-            block = block,
-        )
-    }
-}
 
 
 

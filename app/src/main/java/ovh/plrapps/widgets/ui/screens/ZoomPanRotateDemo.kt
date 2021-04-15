@@ -43,7 +43,7 @@ fun ZoomPanRotateDemo(modifier: Modifier = Modifier) {
                 scale(scale = state.scale, Offset.Zero)
             }) {
                 for (i in 0..99) {
-                    for (j in 0..39) {
+                    for (j in 0..49) {
                         drawRect(
                             getColor(i, j),
                             topLeft = Offset(i * 256f, j * 256f),
