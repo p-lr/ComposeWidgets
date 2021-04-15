@@ -1,24 +1,27 @@
 package ovh.plrapps.widgets.ui.widgets
 
+import ovh.plrapps.widgets.gestures.detectGestures
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.*
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.util.fastAny
+import androidx.compose.ui.util.fastForEach
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import ovh.plrapps.widgets.utils.AngleDegree
 import ovh.plrapps.widgets.utils.toRad
-import kotlin.math.cos
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.sin
+import kotlin.math.*
 
 @Composable
 internal fun ZoomPanRotate(
@@ -33,7 +36,7 @@ internal fun ZoomPanRotate(
         content = content,
         modifier
             .pointerInput(Unit) {
-                detectTransformGestures(
+                detectGestures(
                     onGesture = { centroid, pan, gestureZoom, gestureRotate ->
                         rotationDeltaListener.onRotationDelta(gestureRotate)
                         scaleRatioListener.onScaleRatio(gestureZoom, centroid)
@@ -41,7 +44,8 @@ internal fun ZoomPanRotate(
 //                        val rotRad = state.rotation * PI.toFloat() / 180f
 //                        state.offsetX += (pan.x * cos(rotRad) - pan.y * sin(rotRad)) * state.scale
 //                        state.offsetY += (pan.y * cos(rotRad) + pan.x * sin(rotRad)) * state.scale
-                    }
+                    },
+                    onFling = { println("fling $it") }
                 )
             }
             .pointerInput(Unit) {
