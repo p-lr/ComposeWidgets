@@ -15,6 +15,7 @@ import kotlin.math.pow
 suspend fun PointerInputScope.detectGestures(
     panZoomLock: Boolean = false,
     onGesture: (centroid: Offset, pan: Offset, zoom: Float, rotation: Float) -> Unit,
+    onTouchDown: () -> Unit,
     onFling: (velocity: Velocity) -> Unit
 ) {
     val flingVelocityThreshold = 50.dp.toPx().pow(2)
@@ -29,6 +30,7 @@ suspend fun PointerInputScope.detectGestures(
             var lockedToPanZoom = false
 
             awaitFirstDown(requireUnconsumed = false)
+            onTouchDown()
             val velocityTracker = VelocityTracker()
             do {
                 val event = awaitPointerEvent()

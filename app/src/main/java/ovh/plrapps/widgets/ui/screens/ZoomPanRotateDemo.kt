@@ -28,6 +28,8 @@ fun ZoomPanRotateDemo(modifier: Modifier = Modifier) {
         scaleRatioListener = state,
         rotationDeltaListener = state,
         panDeltaListener = state,
+        flingListener = state,
+        tapListener = state,
         layoutSizeChangeListener = state
     ) {
         Canvas(
@@ -40,8 +42,8 @@ fun ZoomPanRotateDemo(modifier: Modifier = Modifier) {
                 translate(left = -state.scrollX, top = -state.scrollY)
                 scale(scale = state.scale, Offset.Zero)
             }) {
-                for (i in 0..9) {
-                    for (j in 0..4) {
+                for (i in 0..99) {
+                    for (j in 0..39) {
                         drawRect(
                             getColor(i, j),
                             topLeft = Offset(i * 256f, j * 256f),

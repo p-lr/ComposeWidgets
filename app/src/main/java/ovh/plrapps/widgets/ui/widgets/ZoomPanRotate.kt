@@ -1,24 +1,21 @@
 package ovh.plrapps.widgets.ui.widgets
 
-import ovh.plrapps.widgets.gestures.detectGestures
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.*
-import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Velocity
-import androidx.compose.ui.util.fastAny
-import androidx.compose.ui.util.fastForEach
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import ovh.plrapps.widgets.gestures.detectGestures
 import ovh.plrapps.widgets.utils.AngleDegree
 import ovh.plrapps.widgets.utils.toRad
 import kotlin.math.*
@@ -29,9 +26,13 @@ internal fun ZoomPanRotate(
     scaleRatioListener: ScaleRatioListener,
     rotationDeltaListener: RotationDeltaListener,
     panDeltaListener: PanDeltaListener,
+    flingListener: FlingListener,
+    tapListener: TapListener,
     layoutSizeChangeListener: LayoutSizeChangeListener,
     content: @Composable () -> Unit
 ) {
+    val scope = rememberCoroutineScope()
+
     Layout(
         content = content,
         modifier
@@ -45,11 +46,14 @@ internal fun ZoomPanRotate(
 //                        state.offsetX += (pan.x * cos(rotRad) - pan.y * sin(rotRad)) * state.scale
 //                        state.offsetY += (pan.y * cos(rotRad) + pan.x * sin(rotRad)) * state.scale
                     },
-                    onFling = { println("fling $it") }
+                    onTouchDown = tapListener::onTap,
+                    onFling = { velocity -> flingListener.onFling(scope, velocity) }
                 )
             }
             .pointerInput(Unit) {
-                detectTapGestures(onDoubleTap = { println("double tap") })
+                detectTapGestures(
+                    onDoubleTap = tapListener::onDoubleTap
+                )
             }
             .onSizeChanged {
                 layoutSizeChangeListener.onSizeChanged(it)
@@ -72,12 +76,12 @@ internal fun ZoomPanRotate(
     }
 }
 
-class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener,
-    LayoutSizeChangeListener {
+class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener, FlingListener,
+    TapListener, LayoutSizeChangeListener {
     private val scope = CoroutineScope(Dispatchers.Main)
 
-    private val fullWidth = 2560
-    private val fullHeight = 1280
+    private val fullWidth = 25600
+    private val fullHeight = 12800
     private val minimumScaleMode: MinimumScaleMode = Fit
 
     /* A handy tool to animate scale, rotation, and scroll */
@@ -95,6 +99,9 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
 
     private var layoutSize by mutableStateOf(IntSize(0, 0))
     private var minScale: Float by mutableStateOf(0f)
+
+    var scrollAnimatable: Animatable<Offset, AnimationVector2D>? = null
+    var isFlinging = false
 
     override fun onScaleRatio(scaleRatio: Float, centroid: Offset) {
         val formerScale = scale
@@ -115,6 +122,7 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
     }
 
     override fun onScrollDelta(scrollDelta: Offset) {
+        println("scroll")
         val rotRad = -rotation.toRad()
 //        println("scroll delta : $scrollDelta")
         var scrollX = scrollX
@@ -122,6 +130,30 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
         scrollX -= scrollDelta.x * cos(rotRad) - scrollDelta.y * sin(rotRad)
         scrollY -= scrollDelta.x * sin(rotRad) + scrollDelta.y * cos(rotRad)
         constrainScroll(scrollX, scrollY)
+    }
+
+    override fun onFling(coroutineScope: CoroutineScope, velocity: Velocity) {
+        scrollAnimatable = Animatable(Offset(scrollX, scrollY), Offset.VectorConverter)
+        isFlinging = true
+
+        coroutineScope.launch {
+            scrollAnimatable?.animateDecay(
+                initialVelocity = -Offset(velocity.x, velocity.y),
+                animationSpec = FloatExponentialDecaySpec().generateDecayAnimationSpec(),
+            ) {
+                if (isFlinging) {
+                    constrainScroll(value.x, value.y)
+                }
+            }
+        }
+    }
+
+    override fun onTap() {
+        isFlinging = false
+    }
+
+    override fun onDoubleTap(offSet: Offset) {
+        println("double-tap")
     }
 
     override fun onSizeChanged(size: IntSize) {
@@ -146,8 +178,16 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
     }
 
     private fun constrainScroll(scrollX: Float, scrollY: Float) {
+        constrainScrollX(scrollX)
+        constrainScrollY(scrollY)
+    }
+
+    private fun constrainScrollX(scrollX: Float) {
         this.scrollX =
             scrollX.coerceIn(0f, max(0f, fullWidth * scale - layoutSize.width))
+    }
+
+    private fun constrainScrollY(scrollY: Float) {
         this.scrollY =
             scrollY.coerceIn(0f, max(0f, fullHeight * scale - layoutSize.height))
     }
@@ -179,6 +219,15 @@ internal interface PanDeltaListener {
     fun onScrollDelta(scrollDelta: Offset)
 }
 
+internal interface FlingListener {
+    fun onFling(composableScope: CoroutineScope, velocity: Velocity)
+}
+
+internal interface TapListener {
+    fun onTap()
+    fun onDoubleTap(offSet: Offset)
+}
+
 internal interface LayoutSizeChangeListener {
     fun onSizeChanged(size: IntSize)
 }
@@ -191,6 +240,30 @@ sealed class MinimumScaleMode
 object Fit : MinimumScaleMode()
 object Fill : MinimumScaleMode()
 data class Forced(val scale: Float) : MinimumScaleMode()
+
+private suspend fun Animatable<Float, AnimationVector1D>.fling(
+    initialVelocity: Float,
+    animationSpec: DecayAnimationSpec<Float>,
+    adjustTarget: ((Float) -> Float)?,
+    block: (Animatable<Float, AnimationVector1D>.() -> Unit)? = null,
+): AnimationResult<Float, AnimationVector1D> {
+    val targetValue = animationSpec.calculateTargetValue(value, initialVelocity)
+    val adjustedTarget = adjustTarget?.invoke(targetValue)
+
+    return if (adjustedTarget != null) {
+        animateTo(
+            targetValue = adjustedTarget,
+            initialVelocity = initialVelocity,
+            block = block
+        )
+    } else {
+        animateDecay(
+            initialVelocity = initialVelocity,
+            animationSpec = animationSpec,
+            block = block,
+        )
+    }
+}
 
 
 
