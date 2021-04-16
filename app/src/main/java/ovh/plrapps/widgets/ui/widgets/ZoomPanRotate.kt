@@ -29,6 +29,8 @@ internal fun ZoomPanRotate(
     flingListener: FlingListener,
     tapListener: TapListener,
     layoutSizeChangeListener: LayoutSizeChangeListener,
+    paddingX: Int,
+    paddingY: Int,
     content: @Composable () -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -69,8 +71,7 @@ internal fun ZoomPanRotate(
         layout(constraints.maxWidth, constraints.maxHeight) {
             // Place children in the parent layout
             placeables.forEach { placeable ->
-                // Position item on the screen
-                placeable.place(x = 0, y = 0)
+                placeable.place(x = paddingX, y = paddingY)
             }
         }
     }
@@ -82,7 +83,7 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
 
     private val fullWidth = 25600
     private val fullHeight = 12800
-    private val minimumScaleMode: MinimumScaleMode = Fill
+    private val minimumScaleMode: MinimumScaleMode = Fit
 
     /* A handy tool to animate scale, rotation, and scroll */
     private val transformableState = TransformableState { zoomChange, panChange, rotationChange ->
@@ -100,8 +101,15 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
     private var layoutSize by mutableStateOf(IntSize(0, 0))
     private var minScale: Float by mutableStateOf(0f)
 
+    /**
+     * When scaled out beyond the scaled permitted by [Fill], these paddings are used by the layout.
+     */
+    internal var paddingX: Int by mutableStateOf(0)
+    internal var paddingY: Int by mutableStateOf(0)
+
     /* Used for fling animation */
-    private val scrollAnimatable: Animatable<Offset, AnimationVector2D> = Animatable(Offset.Zero, Offset.VectorConverter)
+    private val scrollAnimatable: Animatable<Offset, AnimationVector2D> =
+        Animatable(Offset.Zero, Offset.VectorConverter)
     var isFlinging = false
 
     override fun onScaleRatio(scaleRatio: Float, centroid: Offset) {
@@ -123,7 +131,6 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
     }
 
     override fun onScrollDelta(scrollDelta: Offset) {
-        println("scroll")
         val rotRad = -rotation.toRad()
 //        println("scroll delta : $scrollDelta")
         var scrollX = scrollX
@@ -197,6 +204,21 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
 
     private fun constrainScale(scale: Float) {
         this.scale = scale.coerceIn(minScale, 2f)  // scale between 0+ and 2f
+        updatePadding()
+    }
+
+    private fun updatePadding() {
+        paddingX = if (fullWidth * scale >= layoutSize.width) {
+            0
+        } else {
+            layoutSize.width / 2 - (fullWidth * scale).roundToInt() / 2
+        }
+
+        paddingY = if (fullHeight * scale >= layoutSize.height) {
+            0
+        } else {
+            layoutSize.height / 2 - (fullHeight * scale).roundToInt() / 2
+        }
     }
 }
 

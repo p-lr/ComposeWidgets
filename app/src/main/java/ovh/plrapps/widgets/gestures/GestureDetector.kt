@@ -18,7 +18,7 @@ suspend fun PointerInputScope.detectGestures(
     onTouchDown: () -> Unit,
     onFling: (velocity: Velocity) -> Unit
 ) {
-    val flingVelocityThreshold = 50.dp.toPx().pow(2)
+    val flingVelocityThreshold = 200.dp.toPx().pow(2)
 
     forEachGesture {
         awaitPointerEventScope {

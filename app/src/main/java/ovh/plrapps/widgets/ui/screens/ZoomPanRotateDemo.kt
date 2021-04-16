@@ -30,7 +30,9 @@ fun ZoomPanRotateDemo(modifier: Modifier = Modifier) {
         panDeltaListener = state,
         flingListener = state,
         tapListener = state,
-        layoutSizeChangeListener = state
+        layoutSizeChangeListener = state,
+        paddingX = state.paddingX,
+        paddingY = state.paddingY
     ) {
         Canvas(
             modifier = modifier
