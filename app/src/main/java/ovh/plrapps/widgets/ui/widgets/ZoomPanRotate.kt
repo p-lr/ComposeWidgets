@@ -1,19 +1,19 @@
 package ovh.plrapps.widgets.ui.widgets
 
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.gestures.*
+import androidx.compose.foundation.gestures.TransformableState
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.pointer.*
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import ovh.plrapps.widgets.gestures.detectGestures
 import ovh.plrapps.widgets.utils.AngleDegree
@@ -24,11 +24,7 @@ import kotlin.math.*
 @Composable
 internal fun ZoomPanRotate(
     modifier: Modifier = Modifier,
-    scaleRatioListener: ScaleRatioListener,
-    rotationDeltaListener: RotationDeltaListener,
-    panDeltaListener: PanDeltaListener,
-    flingListener: FlingListener,
-    tapListener: TapListener,
+    gestureListener: GestureListener,
     layoutSizeChangeListener: LayoutSizeChangeListener,
     paddingX: Int,
     paddingY: Int,
@@ -42,24 +38,24 @@ internal fun ZoomPanRotate(
             .pointerInput(Unit) {
                 detectGestures(
                     onGesture = { centroid, pan, gestureZoom, gestureRotate ->
-                        rotationDeltaListener.onRotationDelta(gestureRotate)
-                        scaleRatioListener.onScaleRatio(gestureZoom, centroid)
-                        panDeltaListener.onScrollDelta(pan)
+                        gestureListener.onRotationDelta(gestureRotate)
+                        gestureListener.onScaleRatio(gestureZoom, centroid)
+                        gestureListener.onScrollDelta(pan)
 //                        val rotRad = state.rotation * PI.toFloat() / 180f
 //                        state.offsetX += (pan.x * cos(rotRad) - pan.y * sin(rotRad)) * state.scale
 //                        state.offsetY += (pan.y * cos(rotRad) + pan.x * sin(rotRad)) * state.scale
                     },
-                    onTouchDown = tapListener::onTap,
-                    onFling = { velocity -> flingListener.onFling(scope, velocity) }
+                    onTouchDown = gestureListener::onTap,
+                    onFling = { velocity -> gestureListener.onFling(velocity) }
                 )
             }
             .pointerInput(Unit) {
                 detectTapGestures(
-                    onDoubleTap = { offset -> tapListener.onDoubleTap(scope, offset) }
+                    onDoubleTap = { offset -> gestureListener.onDoubleTap(offset) }
                 )
             }
             .onSizeChanged {
-                layoutSizeChangeListener.onSizeChanged(it)
+                layoutSizeChangeListener.onSizeChanged(scope, it)
             }
             .fillMaxSize(),
     ) { measurables, constraints ->
@@ -78,12 +74,13 @@ internal fun ZoomPanRotate(
     }
 }
 
-class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener, FlingListener,
-    TapListener, LayoutSizeChangeListener {
-    private val scope = CoroutineScope(Dispatchers.Main)
 
-    private val fullWidth = 25600
-    private val fullHeight = 12800
+class MapViewState(
+    private val fullWidth: Int,
+    private val fullHeight: Int
+) : GestureListener, LayoutSizeChangeListener {
+    private var scope: CoroutineScope? = null
+
     private val minimumScaleMode: MinimumScaleMode = Fit
 
     /* A handy tool to animate scale, rotation, and scroll */
@@ -160,10 +157,10 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
         setScroll(scrollX, scrollY)
     }
 
-    override fun onFling(composableScope: CoroutineScope, velocity: Velocity) {
+    override fun onFling(velocity: Velocity) {
         isFlinging = true
 
-        composableScope.launch {
+        scope?.launch {
             scrollAnimatable.snapTo(Offset(scrollX, scrollY))
             scrollAnimatable.animateDecay(
                 initialVelocity = -Offset(velocity.x, velocity.y),
@@ -183,7 +180,7 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
         isFlinging = false
     }
 
-    override fun onDoubleTap(composableScope: CoroutineScope, offSet: Offset) {
+    override fun onDoubleTap(offSet: Offset) {
         val startScale = scale
         val startScrollX = scrollX
         val startScrollY = scrollY
@@ -194,7 +191,7 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
         val destScrollX = getScrollAtOffsetAndScale(startScrollX, offSet.x, destScale / startScale)
         val destScrollY = getScrollAtOffsetAndScale(startScrollY, offSet.y, destScale / startScale)
 
-        composableScope.launch {
+        scope?.launch {
             Animatable(0f).animateTo(1f) {
                 setScale(lerp(startScale, destScale, value))
                 setScroll(
@@ -205,26 +202,27 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
         }
     }
 
-    override fun onSizeChanged(size: IntSize) {
+    override fun onSizeChanged(composableScope: CoroutineScope, size: IntSize) {
         println("layout changed: $size")
+        scope = composableScope
         layoutSize = size
         recalculateMinScale()
         setScale(scale)
     }
 
-    fun smoothScaleTo(scale: Float) = scope.launch {
-        val currScale = this@MapViewState.scale
-        if (currScale > 0) {
-            transformableState.animateZoomBy(scale / currScale)
-        }
-    }
+//    fun smoothScaleTo(scale: Float) = scope.launch {
+//        val currScale = this@MapViewState.scale
+//        if (currScale > 0) {
+//            transformableState.animateZoomBy(scale / currScale)
+//        }
+//    }
 
-    /**
-     * TODO: Should we take pixel coordinates, or relative coordinates?
-     */
-    fun smoothScrollTo(offset: Offset) = scope.launch {
-        transformableState.animatePanBy(offset)
-    }
+//    /**
+//     * TODO: Should we take pixel coordinates, or relative coordinates?
+//     */
+//    fun smoothScrollTo(offset: Offset) = scope.launch {
+//        transformableState.animatePanBy(offset)
+//    }
 
     private fun constrainScrollX(scrollX: Float): Float {
         return scrollX.coerceIn(0f, max(0f, fullWidth * scale - layoutSize.width))
@@ -263,33 +261,23 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
     }
 }
 
-internal interface ScaleRatioListener {
+internal interface GestureListener {
     fun onScaleRatio(scaleRatio: Float, centroid: Offset)
-}
-
-internal interface RotationDeltaListener {
     fun onRotationDelta(rotationDelta: Float)
-}
-
-internal interface PanDeltaListener {
     fun onScrollDelta(scrollDelta: Offset)
-}
-
-internal interface FlingListener {
-    fun onFling(composableScope: CoroutineScope, velocity: Velocity)
-}
-
-internal interface TapListener {
+    fun onFling(velocity: Velocity)
     fun onTap()
-    fun onDoubleTap(composableScope: CoroutineScope, offSet: Offset)
+    fun onDoubleTap(offSet: Offset)
 }
 
 internal interface LayoutSizeChangeListener {
-    fun onSizeChanged(size: IntSize)
+    fun onSizeChanged(composableScope: CoroutineScope, size: IntSize)
 }
 
 class MapViewViewModel() : ViewModel() {
-    val state: MapViewState by mutableStateOf(MapViewState())
+    val state: MapViewState by mutableStateOf(
+        MapViewState(25600, 12800)
+    )
 }
 
 sealed class MinimumScaleMode

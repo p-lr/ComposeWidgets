@@ -25,11 +25,7 @@ fun ZoomPanRotateDemo(modifier: Modifier = Modifier) {
         modifier = modifier
             .size(350.dp, 500.dp)
             .background(Color.Black),
-        scaleRatioListener = state,
-        rotationDeltaListener = state,
-        panDeltaListener = state,
-        flingListener = state,
-        tapListener = state,
+        gestureListener = state,
         layoutSizeChangeListener = state,
         paddingX = state.paddingX,
         paddingY = state.paddingY
