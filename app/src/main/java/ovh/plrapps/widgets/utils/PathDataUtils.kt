@@ -2,12 +2,6 @@ package ovh.plrapps.widgets.utils
 
 import androidx.compose.ui.graphics.vector.PathNode
 
-/**
- * Calculates a number between two numbers at a specific increment.
- */
-fun lerp(a: Float, b: Float, t: Float): Float {
-    return a + (b - a) * t
-}
 
 /**
  * Linearly interpolates two lists of path nodes to simulate path morphing.

@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import ovh.plrapps.widgets.gestures.detectGestures
 import ovh.plrapps.widgets.utils.AngleDegree
+import ovh.plrapps.widgets.utils.lerp
 import ovh.plrapps.widgets.utils.toRad
 import kotlin.math.*
 
@@ -54,7 +55,7 @@ internal fun ZoomPanRotate(
             }
             .pointerInput(Unit) {
                 detectTapGestures(
-                    onDoubleTap = tapListener::onDoubleTap
+                    onDoubleTap = { offset -> tapListener.onDoubleTap(scope, offset) }
                 )
             }
             .onSizeChanged {
@@ -93,10 +94,10 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
         scrollY += panChange.y
     }
 
-    var scale by mutableStateOf(1f)
-    var rotation: AngleDegree by mutableStateOf(0f)
-    var scrollX by mutableStateOf(0f)
-    var scrollY by mutableStateOf(0f)
+    internal var scale by mutableStateOf(1f)
+    internal var rotation: AngleDegree by mutableStateOf(0f)
+    internal var scrollX by mutableStateOf(0f)
+    internal var scrollY by mutableStateOf(0f)
 
     private var layoutSize by mutableStateOf(IntSize(0, 0))
     private var minScale: Float by mutableStateOf(0f)
@@ -110,19 +111,38 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
     /* Used for fling animation */
     private val scrollAnimatable: Animatable<Offset, AnimationVector2D> =
         Animatable(Offset.Zero, Offset.VectorConverter)
-    var isFlinging = false
+    private var isFlinging = false
+
+    fun setScale(scale: Float) {
+        this.scale = constrainScale(scale)
+        updatePadding()
+    }
+
+    fun setScroll(scrollX: Float, scrollY: Float) {
+        this.scrollX = constrainScrollX(scrollX)
+        this.scrollY = constrainScrollY(scrollY)
+    }
 
     override fun onScaleRatio(scaleRatio: Float, centroid: Offset) {
         val formerScale = scale
-        constrainScale(scale * scaleRatio)
+        setScale(scale * scaleRatio)
 
+        /* Pinch and zoom magic */
         val effectiveScaleRatio = scale / formerScale
-        scrollX = (scrollX + centroid.x) * effectiveScaleRatio - centroid.x
-        scrollY = (scrollY + centroid.y) * effectiveScaleRatio - centroid.y
+        setScroll(
+            scrollX = getScrollAtOffsetAndScale(scrollX, centroid.x, effectiveScaleRatio),
+            scrollY = getScrollAtOffsetAndScale(scrollY, centroid.y, effectiveScaleRatio)
+        )
+//        scrollX = (scrollX + centroid.x) * effectiveScaleRatio - centroid.x
+//        scrollY = (scrollY + centroid.y) * effectiveScaleRatio - centroid.y
 
 //        val rotRad = -rotation.toRad()
 //        scrollX += (centroid.x * cos(rotRad) - centroid.y * sin(rotRad)) * (1- scaleRatio )
 //        scrollY += (centroid.x * sin(rotRad) + centroid.y * cos(rotRad)) * (1 - scaleRatio )
+    }
+
+    private fun getScrollAtOffsetAndScale(scroll: Float, offSet: Float, scaleRatio: Float): Float {
+        return (scroll + offSet) * scaleRatio - offSet
     }
 
     override fun onRotationDelta(rotationDelta: Float) {
@@ -137,7 +157,7 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
         var scrollY = scrollY
         scrollX -= scrollDelta.x * cos(rotRad) - scrollDelta.y * sin(rotRad)
         scrollY -= scrollDelta.x * sin(rotRad) + scrollDelta.y * cos(rotRad)
-        constrainScroll(scrollX, scrollY)
+        setScroll(scrollX, scrollY)
     }
 
     override fun onFling(composableScope: CoroutineScope, velocity: Velocity) {
@@ -150,7 +170,10 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
                 animationSpec = FloatExponentialDecaySpec().generateDecayAnimationSpec(),
             ) {
                 if (isFlinging) {
-                    constrainScroll(value.x, value.y)
+                    setScroll(
+                        scrollX = value.x,
+                        scrollY = value.y
+                    )
                 }
             }
         }
@@ -160,15 +183,33 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
         isFlinging = false
     }
 
-    override fun onDoubleTap(offSet: Offset) {
-        println("double-tap")
+    override fun onDoubleTap(composableScope: CoroutineScope, offSet: Offset) {
+        val startScale = scale
+        val startScrollX = scrollX
+        val startScrollY = scrollY
+
+        val destScale = constrainScale(
+            2.0.pow(floor(ln((scale * 2).toDouble()) / ln(2.0))).toFloat()
+        )
+        val destScrollX = getScrollAtOffsetAndScale(startScrollX, offSet.x, destScale / startScale)
+        val destScrollY = getScrollAtOffsetAndScale(startScrollY, offSet.y, destScale / startScale)
+
+        composableScope.launch {
+            Animatable(0f).animateTo(1f) {
+                setScale(lerp(startScale, destScale, value))
+                setScroll(
+                    scrollX = lerp(startScrollX, destScrollX, value),
+                    scrollY = lerp(startScrollY, destScrollY, value)
+                )
+            }
+        }
     }
 
     override fun onSizeChanged(size: IntSize) {
         println("layout changed: $size")
         layoutSize = size
         recalculateMinScale()
-        constrainScale(scale)
+        setScale(scale)
     }
 
     fun smoothScaleTo(scale: Float) = scope.launch {
@@ -185,11 +226,12 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
         transformableState.animatePanBy(offset)
     }
 
-    private fun constrainScroll(scrollX: Float, scrollY: Float) {
-        this.scrollX =
-            scrollX.coerceIn(0f, max(0f, fullWidth * scale - layoutSize.width))
-        this.scrollY =
-            scrollY.coerceIn(0f, max(0f, fullHeight * scale - layoutSize.height))
+    private fun constrainScrollX(scrollX: Float): Float {
+        return scrollX.coerceIn(0f, max(0f, fullWidth * scale - layoutSize.width))
+    }
+
+    private fun constrainScrollY(scrollY: Float): Float {
+        return scrollY.coerceIn(0f, max(0f, fullHeight * scale - layoutSize.height))
     }
 
     private fun recalculateMinScale() {
@@ -202,9 +244,8 @@ class MapViewState : ScaleRatioListener, RotationDeltaListener, PanDeltaListener
         }
     }
 
-    private fun constrainScale(scale: Float) {
-        this.scale = scale.coerceIn(minScale, 2f)  // scale between 0+ and 2f
-        updatePadding()
+    private fun constrainScale(scale: Float): Float {
+        return scale.coerceIn(minScale, 2f)  // scale between 0+ and 2f
     }
 
     private fun updatePadding() {
@@ -240,7 +281,7 @@ internal interface FlingListener {
 
 internal interface TapListener {
     fun onTap()
-    fun onDoubleTap(offSet: Offset)
+    fun onDoubleTap(composableScope: CoroutineScope, offSet: Offset)
 }
 
 internal interface LayoutSizeChangeListener {
