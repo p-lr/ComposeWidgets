@@ -97,7 +97,18 @@ class MapViewState(
     internal var scrollY by mutableStateOf(0f)
 
     private var layoutSize by mutableStateOf(IntSize(0, 0))
-    private var minScale: Float by mutableStateOf(0f)
+    var minScale = 0f
+        set(value) {
+            field = value
+            setScale(scale)
+        }
+    var maxScale = 2f
+        set(value) {
+            field = value
+            setScale(scale)
+        }
+
+    var shouldLoopScale = false
 
     /**
      * When scaled out beyond the scaled permitted by [Fill], these paddings are used by the layout.
@@ -187,7 +198,9 @@ class MapViewState(
 
         val destScale = constrainScale(
             2.0.pow(floor(ln((scale * 2).toDouble()) / ln(2.0))).toFloat()
-        )
+        ).let {
+            if (shouldLoopScale && it >= maxScale) minScale else it
+        }
         val destScrollX = getScrollAtOffsetAndScale(startScrollX, offSet.x, destScale / startScale)
         val destScrollY = getScrollAtOffsetAndScale(startScrollY, offSet.y, destScale / startScale)
 
@@ -232,6 +245,10 @@ class MapViewState(
         return scrollY.coerceIn(0f, max(0f, fullHeight * scale - layoutSize.height))
     }
 
+    private fun constrainScale(scale: Float): Float {
+        return scale.coerceIn(max(minScale, Float.MIN_VALUE), maxScale)  // scale between 0+ and 2f
+    }
+
     private fun recalculateMinScale() {
         val minScaleX = layoutSize.width.toFloat() / fullWidth
         val minScaleY = layoutSize.height.toFloat() / fullHeight
@@ -240,10 +257,6 @@ class MapViewState(
             Fill -> max(minScaleX, minScaleY)
             is Forced -> minimumScaleMode.scale
         }
-    }
-
-    private fun constrainScale(scale: Float): Float {
-        return scale.coerceIn(minScale, 2f)  // scale between 0+ and 2f
     }
 
     private fun updatePadding() {
@@ -276,7 +289,9 @@ internal interface LayoutSizeChangeListener {
 
 class MapViewViewModel() : ViewModel() {
     val state: MapViewState by mutableStateOf(
-        MapViewState(25600, 12800)
+        MapViewState(25600, 12800).also {
+            it.shouldLoopScale = true
+        }
     )
 }
 
