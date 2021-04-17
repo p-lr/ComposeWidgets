@@ -1,8 +1,6 @@
 package ovh.plrapps.widgets.ui.widgets
 
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.gestures.TransformableState
-import androidx.compose.foundation.gestures.animateZoomBy
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
@@ -15,7 +13,6 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ovh.plrapps.widgets.gestures.detectGestures
 import ovh.plrapps.widgets.utils.AngleDegree
@@ -86,14 +83,6 @@ class MapViewState(
 
     private val minimumScaleMode: MinimumScaleMode = Fit
 
-    /* A handy tool to animate scale, rotation, and scroll */
-    private val transformableState = TransformableState { zoomChange, panChange, rotationChange ->
-        setScale(scale * zoomChange)
-        rotation += rotationChange
-        scrollX += panChange.x
-        scrollY += panChange.y
-    }
-
     internal var scale by mutableStateOf(1f)
     internal var rotation: AngleDegree by mutableStateOf(0f)
     internal var scrollX by mutableStateOf(0f)
@@ -127,12 +116,14 @@ class MapViewState(
         Animatable(Offset.Zero, Offset.VectorConverter)
     private var isFlinging = false
 
+    @Suppress("unused")
     fun setScale(scale: Float) {
         this.scale = constrainScale(scale)
         updatePadding()
         updateCentroid()
     }
 
+    @Suppress("unused")
     fun setScroll(scrollX: Float, scrollY: Float) {
         this.scrollX = constrainScrollX(scrollX)
         this.scrollY = constrainScrollY(scrollY)
@@ -153,9 +144,43 @@ class MapViewState(
         scope?.launch {
             val currScale = this@MapViewState.scale
             if (currScale > 0) {
-                transformableState.animateZoomBy(
-                    max(scale / currScale, Float.MIN_VALUE),
-                    animationSpec
+                Animatable(0f).animateTo(1f, animationSpec) {
+                    setScale(lerp(currScale, scale, value))
+                }
+            }
+        }
+    }
+
+    /**
+     * Animates the layout to the scale provided, and centers the viewport to the supplied scroll
+     * position.
+     *
+     * @param scrollX Horizontal scroll of the destination point.
+     * @param scrollY Vertical scroll of the destination point.
+     * @param scale The final scale value the layout should animate to.
+     * @param animationSpec The [AnimationSpec] the animation should use.
+     */
+    @Suppress("unused")
+    fun slideToAndCenterWithScale(
+        scrollX: Float,
+        scrollY: Float,
+        scale: Float,
+        animationSpec: AnimationSpec<Float> = SpringSpec(stiffness = Spring.StiffnessLow)
+    ) {
+        val startScrollX = this.scrollX
+        val startScrollY = this.scrollY
+        val destScrollX = scrollX - layoutSize.width / 2
+        val destScrollY = scrollY - layoutSize.height / 2
+
+        val startScale = this.scale
+        val destScale = scale
+
+        scope?.launch {
+            Animatable(0f).animateTo(1f, animationSpec) {
+                setScale(lerp(startScale, destScale, value))
+                setScroll(
+                    scrollX = lerp(startScrollX, destScrollX, value),
+                    scrollY = lerp(startScrollY, destScrollY, value)
                 )
             }
         }
@@ -274,6 +299,7 @@ class MapViewState(
 //        scope?.launch {
 //            delay(3000)
 //            smoothScaleTo(0f)
+//            slideToAndCenterWithScale(1000f, 9000f, 1f)
 //        }
     }
 
