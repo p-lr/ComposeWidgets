@@ -2,6 +2,7 @@ package ovh.plrapps.widgets.ui.widgets
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.gestures.TransformableState
+import androidx.compose.foundation.gestures.animateZoomBy
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
@@ -14,6 +15,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ovh.plrapps.widgets.gestures.detectGestures
 import ovh.plrapps.widgets.utils.AngleDegree
@@ -86,7 +88,7 @@ class MapViewState(
 
     /* A handy tool to animate scale, rotation, and scroll */
     private val transformableState = TransformableState { zoomChange, panChange, rotationChange ->
-        scale *= zoomChange
+        setScale(scale * zoomChange)
         rotation += rotationChange
         scrollX += panChange.x
         scrollY += panChange.y
@@ -135,6 +137,28 @@ class MapViewState(
         this.scrollX = constrainScrollX(scrollX)
         this.scrollY = constrainScrollY(scrollY)
         updateCentroid()
+    }
+
+    /**
+     * Scales the layout with animated scale, without maintaining scroll position.
+     *
+     * @param scale The final scale value the layout should animate to.
+     * @param animationSpec The [AnimationSpec] the animation should use.
+     */
+    @Suppress("unused")
+    fun smoothScaleTo(
+        scale: Float,
+        animationSpec: AnimationSpec<Float> = SpringSpec(stiffness = Spring.StiffnessLow)
+    ) {
+        scope?.launch {
+            val currScale = this@MapViewState.scale
+            if (currScale > 0) {
+                transformableState.animateZoomBy(
+                    max(scale / currScale, Float.MIN_VALUE),
+                    animationSpec
+                )
+            }
+        }
     }
 
     override fun onScaleRatio(scaleRatio: Float, centroid: Offset) {
@@ -246,14 +270,12 @@ class MapViewState(
         layoutSize = size
         recalculateMinScale()
         setScale(scale)
-    }
 
-//    fun smoothScaleTo(scale: Float) = scope.launch {
-//        val currScale = this@MapViewState.scale
-//        if (currScale > 0) {
-//            transformableState.animateZoomBy(scale / currScale)
+//        scope?.launch {
+//            delay(3000)
+//            smoothScaleTo(0f)
 //        }
-//    }
+    }
 
 //    /**
 //     * TODO: Should we take pixel coordinates, or relative coordinates?
