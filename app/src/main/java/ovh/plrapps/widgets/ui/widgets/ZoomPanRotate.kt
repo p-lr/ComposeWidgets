@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import ovh.plrapps.widgets.gestures.detectGestures
 import ovh.plrapps.widgets.utils.AngleDegree
 import ovh.plrapps.widgets.utils.lerp
+import ovh.plrapps.widgets.utils.modulo
 import ovh.plrapps.widgets.utils.toRad
 import kotlin.math.*
 
@@ -76,8 +77,8 @@ internal fun ZoomPanRotate(
 
 
 class MapViewState(
-    private val fullWidth: Int,
-    private val fullHeight: Int
+    val fullWidth: Int,
+    val fullHeight: Int
 ) : GestureListener, LayoutSizeChangeListener {
     private var scope: CoroutineScope? = null
 
@@ -95,6 +96,9 @@ class MapViewState(
     internal var rotation: AngleDegree by mutableStateOf(0f)
     internal var scrollX by mutableStateOf(0f)
     internal var scrollY by mutableStateOf(0f)
+
+    internal var centroidX: Double by mutableStateOf(0.0)
+    internal var centroidY: Double by mutableStateOf(0.0)
 
     private var layoutSize by mutableStateOf(IntSize(0, 0))
     var minScale = 0f
@@ -124,11 +128,13 @@ class MapViewState(
     fun setScale(scale: Float) {
         this.scale = constrainScale(scale)
         updatePadding()
+        updateCentroid()
     }
 
     fun setScroll(scrollX: Float, scrollY: Float) {
         this.scrollX = constrainScrollX(scrollX)
         this.scrollY = constrainScrollY(scrollY)
+        updateCentroid()
     }
 
     override fun onScaleRatio(scaleRatio: Float, centroid: Offset) {
@@ -154,7 +160,8 @@ class MapViewState(
     }
 
     override fun onRotationDelta(rotationDelta: Float) {
-//        this.rotation += rotationDelta
+        rotation = (rotation + rotationDelta).modulo()
+        updateCentroid()
 //        println("rotation : $rotation")
     }
 
@@ -247,6 +254,17 @@ class MapViewState(
 
     private fun constrainScale(scale: Float): Float {
         return scale.coerceIn(max(minScale, Float.MIN_VALUE), maxScale)  // scale between 0+ and 2f
+    }
+
+    private fun updateCentroid() {
+        centroidX = (scrollX + min(
+            layoutSize.width.toDouble() / 2,
+            fullWidth * scale.toDouble() / 2
+        )) / (fullWidth * scale)
+        centroidY = (scrollY + min(
+            layoutSize.height.toDouble() / 2,
+            fullHeight * scale.toDouble() / 2
+        )) / (fullHeight * scale)
     }
 
     private fun recalculateMinScale() {

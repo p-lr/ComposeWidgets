@@ -28,7 +28,7 @@ fun ZoomPanRotateDemo(modifier: Modifier = Modifier) {
         gestureListener = state,
         layoutSizeChangeListener = state,
         paddingX = state.paddingX,
-        paddingY = state.paddingY
+        paddingY = state.paddingY,
     ) {
         Canvas(
             modifier = modifier
@@ -36,8 +36,14 @@ fun ZoomPanRotateDemo(modifier: Modifier = Modifier) {
                 .background(Color.Gray)
         ) {
             withTransform({
-                rotate(state.rotation)
                 translate(left = -state.scrollX, top = -state.scrollY)
+                rotate(
+                    degrees = state.rotation,
+                    pivot = Offset(
+                        x = state.centroidX.toFloat() * state.fullWidth * state.scale,
+                        y = state.centroidY.toFloat() * state.fullHeight * state.scale
+                    )
+                )
                 scale(scale = state.scale, Offset.Zero)
             }) {
                 for (i in 0..99) {
