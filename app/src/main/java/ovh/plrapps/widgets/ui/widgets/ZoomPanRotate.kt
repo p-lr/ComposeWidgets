@@ -147,12 +147,6 @@ class MapViewState(
             scrollX = getScrollAtOffsetAndScale(scrollX, centroid.x, effectiveScaleRatio),
             scrollY = getScrollAtOffsetAndScale(scrollY, centroid.y, effectiveScaleRatio)
         )
-//        scrollX = (scrollX + centroid.x) * effectiveScaleRatio - centroid.x
-//        scrollY = (scrollY + centroid.y) * effectiveScaleRatio - centroid.y
-
-//        val rotRad = -rotation.toRad()
-//        scrollX += (centroid.x * cos(rotRad) - centroid.y * sin(rotRad)) * (1- scaleRatio )
-//        scrollY += (centroid.x * sin(rotRad) + centroid.y * cos(rotRad)) * (1 - scaleRatio )
     }
 
     private fun getScrollAtOffsetAndScale(scroll: Float, offSet: Float, scaleRatio: Float): Float {
@@ -166,12 +160,16 @@ class MapViewState(
     }
 
     override fun onScrollDelta(scrollDelta: Offset) {
-        val rotRad = -rotation.toRad()
-//        println("scroll delta : $scrollDelta")
         var scrollX = scrollX
         var scrollY = scrollY
-        scrollX -= scrollDelta.x * cos(rotRad) - scrollDelta.y * sin(rotRad)
-        scrollY -= scrollDelta.x * sin(rotRad) + scrollDelta.y * cos(rotRad)
+
+        val rotRad = -rotation.toRad()
+        scrollX -= if (rotRad == 0f) scrollDelta.x else {
+            scrollDelta.x * cos(rotRad) - scrollDelta.y * sin(rotRad)
+        }
+        scrollY -= if (rotRad == 0f) scrollDelta.y else {
+            scrollDelta.x * sin(rotRad) + scrollDelta.y * cos(rotRad)
+        }
         setScroll(scrollX, scrollY)
     }
 
@@ -179,13 +177,17 @@ class MapViewState(
         isFlinging = true
 
         val rotRad = -rotation.toRad()
-        val velocityXr = velocity.x * cos(rotRad) - velocity.y * sin(rotRad)
-        val velocityYr = velocity.x * sin(rotRad) + velocity.y * cos(rotRad)
+        val velocityX = if (rotRad == 0f) velocity.x else {
+            velocity.x * cos(rotRad) - velocity.y * sin(rotRad)
+        }
+        val velocityY = if (rotRad == 0f) velocity.y else {
+            velocity.x * sin(rotRad) + velocity.y * cos(rotRad)
+        }
 
         scope?.launch {
             scrollAnimatable.snapTo(Offset(scrollX, scrollY))
             scrollAnimatable.animateDecay(
-                initialVelocity = -Offset(velocityXr, velocityYr),
+                initialVelocity = -Offset(velocityX, velocityY),
                 animationSpec = FloatExponentialDecaySpec().generateDecayAnimationSpec(),
             ) {
                 if (isFlinging) {
@@ -212,8 +214,20 @@ class MapViewState(
         ).let {
             if (shouldLoopScale && it >= maxScale) minScale else it
         }
-        val destScrollX = getScrollAtOffsetAndScale(startScrollX, offSet.x, destScale / startScale)
-        val destScrollY = getScrollAtOffsetAndScale(startScrollY, offSet.y, destScale / startScale)
+
+        val angleRad = -rotation.toRad()
+        val offSetX = if (angleRad == 0f) offSet.x else {
+            layoutSize.height / 2 * sin(angleRad) + layoutSize.width / 2 * (1 - cos(angleRad)) +
+                    offSet.x * cos(angleRad) - offSet.y * sin(angleRad)
+        }
+
+        val offSetY = if (angleRad == 0f) offSet.y else {
+            layoutSize.height / 2 * (1 - cos(angleRad)) - layoutSize.width / 2 * sin(angleRad) +
+                    offSet.x * sin(angleRad) + offSet.y * cos(angleRad)
+        }
+
+        val destScrollX = getScrollAtOffsetAndScale(startScrollX, offSetX, destScale / startScale)
+        val destScrollY = getScrollAtOffsetAndScale(startScrollY, offSetY, destScale / startScale)
 
         scope?.launch {
             Animatable(0f).animateTo(1f) {

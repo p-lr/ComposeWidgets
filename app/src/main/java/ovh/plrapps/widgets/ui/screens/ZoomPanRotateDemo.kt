@@ -36,6 +36,7 @@ fun ZoomPanRotateDemo(modifier: Modifier = Modifier) {
                 .background(Color.Gray)
         ) {
             withTransform({
+                /* Geometric transformations seem to be applied in reversed order of declaration */
                 translate(left = -state.scrollX, top = -state.scrollY)
                 rotate(
                     degrees = state.rotation,
