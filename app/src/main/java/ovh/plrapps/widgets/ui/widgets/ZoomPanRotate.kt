@@ -178,10 +178,14 @@ class MapViewState(
     override fun onFling(velocity: Velocity) {
         isFlinging = true
 
+        val rotRad = -rotation.toRad()
+        val velocityXr = velocity.x * cos(rotRad) - velocity.y * sin(rotRad)
+        val velocityYr = velocity.x * sin(rotRad) + velocity.y * cos(rotRad)
+
         scope?.launch {
             scrollAnimatable.snapTo(Offset(scrollX, scrollY))
             scrollAnimatable.animateDecay(
-                initialVelocity = -Offset(velocity.x, velocity.y),
+                initialVelocity = -Offset(velocityXr, velocityYr),
                 animationSpec = FloatExponentialDecaySpec().generateDecayAnimationSpec(),
             ) {
                 if (isFlinging) {
