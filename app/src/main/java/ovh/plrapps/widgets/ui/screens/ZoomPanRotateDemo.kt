@@ -47,8 +47,8 @@ fun ZoomPanRotateDemo(modifier: Modifier = Modifier) {
                 )
                 scale(scale = state.scale, Offset.Zero)
             }) {
-                for (i in 0..99) {
-                    for (j in 0..49) {
+                for (i in 0..100) {
+                    for (j in 0..50) {
                         drawRect(
                             getColor(i, j),
                             topLeft = Offset(i * 256f, j * 256f),
@@ -62,11 +62,18 @@ fun ZoomPanRotateDemo(modifier: Modifier = Modifier) {
 }
 
 private fun getColor(i: Int, j: Int): Color {
+    // Corners in red
+    if (i == 0 && (j == 0 || j == 50)) return Color.Red
+    if (j == 0 && (i == 0 || i == 100)) return Color.Red
+
+    // Center in red
+    if (i == 50 && j == 25) return Color.Red
+
     return when ((i + j) % 4) {
         0 -> Color.Blue
         1 -> Color.Cyan
         2 -> Color.DarkGray
-        3 -> Color.Red
+        3 -> Color.Yellow
         else -> Color.Black
     }
 }

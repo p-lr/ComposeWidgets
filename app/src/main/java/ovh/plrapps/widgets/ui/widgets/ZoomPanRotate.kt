@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ovh.plrapps.widgets.gestures.detectGestures
 import ovh.plrapps.widgets.utils.AngleDegree
@@ -157,14 +158,14 @@ class MapViewState(
      *
      * @param scrollX Horizontal scroll of the destination point.
      * @param scrollY Vertical scroll of the destination point.
-     * @param scale The final scale value the layout should animate to.
+     * @param destScale The final scale value the layout should animate to.
      * @param animationSpec The [AnimationSpec] the animation should use.
      */
     @Suppress("unused")
     fun slideToAndCenterWithScale(
         scrollX: Float,
         scrollY: Float,
-        scale: Float,
+        destScale: Float,
         animationSpec: AnimationSpec<Float> = SpringSpec(stiffness = Spring.StiffnessLow)
     ) {
         val startScrollX = this.scrollX
@@ -173,7 +174,38 @@ class MapViewState(
         val destScrollY = scrollY - layoutSize.height / 2
 
         val startScale = this.scale
-        val destScale = scale
+
+        scope?.launch {
+            Animatable(0f).animateTo(1f, animationSpec) {
+                setScale(lerp(startScale, destScale, value))
+                setScroll(
+                    scrollX = lerp(startScrollX, destScrollX, value),
+                    scrollY = lerp(startScrollY, destScrollY, value)
+                )
+            }
+        }
+    }
+
+    /**
+     * Animates the layout to the scale provided, while maintaining position determined by the
+     * the provided focal point.
+     *
+     * @param focusX The horizontal focal point to maintain, relative to the layout.
+     * @param focusY The vertical focal point to maintain, relative to the layout.
+     * @param destScale The final scale value the layout should animate to.
+     * @param animationSpec The [AnimationSpec] the animation should use.
+     */
+    fun smoothScaleWithFocalPoint(
+        focusX: Float,
+        focusY: Float,
+        destScale: Float,
+        animationSpec: AnimationSpec<Float> = SpringSpec(stiffness = Spring.StiffnessLow)
+    ) {
+        val startScale = scale
+        val startScrollX = scrollX
+        val startScrollY = scrollY
+        val destScrollX = getScrollAtOffsetAndScale(startScrollX, focusX, destScale / startScale)
+        val destScrollY = getScrollAtOffsetAndScale(startScrollY, focusY, destScale / startScale)
 
         scope?.launch {
             Animatable(0f).animateTo(1f, animationSpec) {
@@ -254,10 +286,6 @@ class MapViewState(
     }
 
     override fun onDoubleTap(offSet: Offset) {
-        val startScale = scale
-        val startScrollX = scrollX
-        val startScrollY = scrollY
-
         val destScale = constrainScale(
             2.0.pow(floor(ln((scale * 2).toDouble()) / ln(2.0))).toFloat()
         ).let {
@@ -275,18 +303,12 @@ class MapViewState(
                     offSet.x * sin(angleRad) + offSet.y * cos(angleRad)
         }
 
-        val destScrollX = getScrollAtOffsetAndScale(startScrollX, offSetX, destScale / startScale)
-        val destScrollY = getScrollAtOffsetAndScale(startScrollY, offSetY, destScale / startScale)
-
-        scope?.launch {
-            Animatable(0f).animateTo(1f) {
-                setScale(lerp(startScale, destScale, value))
-                setScroll(
-                    scrollX = lerp(startScrollX, destScrollX, value),
-                    scrollY = lerp(startScrollY, destScrollY, value)
-                )
-            }
-        }
+        smoothScaleWithFocalPoint(
+            offSetX,
+            offSetY,
+            destScale,
+            SpringSpec(stiffness = Spring.StiffnessMedium)
+        )
     }
 
     override fun onSizeChanged(composableScope: CoroutineScope, size: IntSize) {
@@ -296,11 +318,11 @@ class MapViewState(
         recalculateMinScale()
         setScale(scale)
 
-//        scope?.launch {
-//            delay(3000)
+        scope?.launch {
+            delay(3000)
 //            smoothScaleTo(0f)
-//            slideToAndCenterWithScale(1000f, 9000f, 1f)
-//        }
+            slideToAndCenterWithScale(12928f, 6528f, 1f)
+        }
     }
 
 //    /**
@@ -373,7 +395,7 @@ internal interface LayoutSizeChangeListener {
 
 class MapViewViewModel() : ViewModel() {
     val state: MapViewState by mutableStateOf(
-        MapViewState(25600, 12800).also {
+        MapViewState(25856, 13056).also {
             it.shouldLoopScale = true
         }
     )
