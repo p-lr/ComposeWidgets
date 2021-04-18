@@ -13,13 +13,13 @@ import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import ovh.plrapps.widgets.ui.widgets.MapViewViewModel
+import ovh.plrapps.widgets.ui.widgets.ZoomPanRotateViewModel
 import ovh.plrapps.widgets.ui.widgets.ZoomPanRotate
 
 @Composable
 fun ZoomPanRotateDemo(modifier: Modifier = Modifier) {
-    val viewModel: MapViewViewModel = viewModel()
-    val state = viewModel.state
+    val rotateViewModel: ZoomPanRotateViewModel = viewModel()
+    val state = rotateViewModel.state
 
     ZoomPanRotate(
         modifier = modifier

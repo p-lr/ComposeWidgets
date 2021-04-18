@@ -13,7 +13,6 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ovh.plrapps.widgets.gestures.detectGestures
 import ovh.plrapps.widgets.utils.AngleDegree
@@ -76,7 +75,7 @@ internal fun ZoomPanRotate(
 }
 
 
-class MapViewState(
+class ZoomPanRotateState(
     val fullWidth: Int,
     val fullHeight: Int
 ) : GestureListener, LayoutSizeChangeListener {
@@ -143,7 +142,7 @@ class MapViewState(
         animationSpec: AnimationSpec<Float> = SpringSpec(stiffness = Spring.StiffnessLow)
     ) {
         scope?.launch {
-            val currScale = this@MapViewState.scale
+            val currScale = this@ZoomPanRotateState.scale
             if (currScale > 0) {
                 Animatable(0f).animateTo(1f, animationSpec) {
                     setScale(lerp(currScale, scale, value))
@@ -318,11 +317,12 @@ class MapViewState(
         recalculateMinScale()
         setScale(scale)
 
-        scope?.launch {
-            delay(3000)
+//        scope?.launch {
+//            delay(3000)
 //            smoothScaleTo(0f)
-            slideToAndCenterWithScale(12928f, 6528f, 1f)
-        }
+//            delay(1000)
+//            smoothScaleWithFocalPoint(25f, 25f, 2f)
+//        }
     }
 
 //    /**
@@ -393,9 +393,9 @@ internal interface LayoutSizeChangeListener {
     fun onSizeChanged(composableScope: CoroutineScope, size: IntSize)
 }
 
-class MapViewViewModel() : ViewModel() {
-    val state: MapViewState by mutableStateOf(
-        MapViewState(25856, 13056).also {
+class ZoomPanRotateViewModel() : ViewModel() {
+    val state: ZoomPanRotateState by mutableStateOf(
+        ZoomPanRotateState(25856, 13056).also {
             it.shouldLoopScale = true
         }
     )
