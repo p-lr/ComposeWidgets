@@ -28,12 +28,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ovh.plrapps.widgets.ui.theme.ComposeWidgetsTheme
 import ovh.plrapps.widgets.utils.lerp
-import javax.inject.Inject
 
 /**
  * A button which has two states (started, and stopped). It animates when transitioning between
@@ -221,8 +219,7 @@ fun Preview4() {
     }
 }
 
-@HiltViewModel
-class StartStopViewModel @Inject constructor(): ViewModel() {
+class StartStopViewModel: ViewModel() {
     /* The state of the button is controlled by the view-model (and the view-model only) */
     var isStopped by mutableStateOf(true)
         private set
