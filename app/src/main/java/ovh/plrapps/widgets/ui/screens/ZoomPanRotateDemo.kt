@@ -18,8 +18,8 @@ import ovh.plrapps.widgets.ui.widgets.ZoomPanRotate
 
 @Composable
 fun ZoomPanRotateDemo(modifier: Modifier = Modifier) {
-    val rotateViewModel: ZoomPanRotateViewModel = viewModel()
-    val state = rotateViewModel.state
+    val viewModel: ZoomPanRotateViewModel = viewModel()
+    val state = viewModel.state
 
     ZoomPanRotate(
         modifier = modifier
@@ -30,6 +30,7 @@ fun ZoomPanRotateDemo(modifier: Modifier = Modifier) {
         paddingX = state.paddingX,
         paddingY = state.paddingY,
     ) {
+        // This composable is a fake TileCanvas composable
         Canvas(
             modifier = modifier
                 .fillMaxSize()
@@ -57,6 +58,10 @@ fun ZoomPanRotateDemo(modifier: Modifier = Modifier) {
                     }
                 }
             }
+        }
+
+        for (c in state.childComposables.values) {
+            c()
         }
     }
 }

@@ -116,6 +116,18 @@ class ZoomPanRotateState(
         Animatable(Offset.Zero, Offset.VectorConverter)
     private var isFlinging = false
 
+    internal val childComposables = mutableStateMapOf<Int, @Composable () -> Unit>()
+
+    @Suppress("unused")
+    fun addComposable(id: Int, c: @Composable () -> Unit) {
+        childComposables[id] = c
+    }
+
+    @Suppress("unused")
+    fun removeComposable(id: Int): Boolean {
+        return childComposables.remove(id) != null
+    }
+
     @Suppress("unused")
     fun setScale(scale: Float) {
         this.scale = constrainScale(scale)
@@ -399,6 +411,19 @@ class ZoomPanRotateViewModel() : ViewModel() {
             it.shouldLoopScale = true
         }
     )
+
+    // Simulate adding and removing a custom composable into the ZoomPanRotate layout
+//    init {
+//        viewModelScope.launch {
+//            delay(3000)
+//            state.addComposable(12) {
+//                Button(onClick = { println("hi!") }, Modifier.size(200.dp)) {}
+//            }
+//
+//            delay(2000)
+//            state.removeComposable(12)
+//        }
+//    }
 }
 
 sealed class MinimumScaleMode
